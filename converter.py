@@ -1,6 +1,7 @@
-import tkinter as tk
-from tkinter import messagebox
+from flask import Flask, request, render_template_string, redirect, url_for
 import shelve
+
+app = Flask(__name__)
 
 def convert_column_to_semicolon_list(data):
     # Split the input data by new lines and strip any leading/trailing whitespace
@@ -11,23 +12,6 @@ def convert_column_to_semicolon_list(data):
     semicolon_separated_list = ";".join(data)
 
     return semicolon_separated_list
-
-def on_convert_button_click():
-    # Get the input data from the text field
-    input_data = text_input.get("1.0", tk.END)
-
-    # Convert the input data to a semicolon-separated list
-    result = convert_column_to_semicolon_list(input_data)
-
-    # Display the result in the output field
-    text_output.delete("1.0", tk.END)
-    text_output.insert(tk.END, result)
-
-    # Save the result to persistent storage
-    save_conversion(result)
-
-    # Update the last 5 conversions display
-    update_last_conversions_display()
 
 def save_conversion(conversion):
     with shelve.open('conversions.db') as db:
@@ -43,40 +27,51 @@ def load_last_conversions():
     with shelve.open('conversions.db') as db:
         return db.get('conversions', [])
 
-def update_last_conversions_display():
-    conversions = load_last_conversions()
-    last_conversions_display.delete("1.0", tk.END)
-    for conversion in conversions:
-        last_conversions_display.insert(tk.END, conversion + "\n\n")
+@app.route('/', methods=['GET', 'POST'])
+def index():
+    if request.method == 'POST':
+        input_data = request.form['input_data']
+        result = convert_column_to_semicolon_list(input_data)
+        save_conversion(result)
+        return redirect(url_for('index'))
 
-# Create the main application window
-root = tk.Tk()
-root.title("Column to Semicolon List Converter")
+    last_conversions = load_last_conversions()
+    return render_template_string('''
+        <!doctype html>
+        <html lang="en">
+        <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+            <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+            <title>Column to Semicolon List Converter</title>
+        </head>
+        <body>
+            <div class="container mt-5">
+                <h1 class="mb-4">Column to Semicolon List Converter</h1>
+                <form method="post">
+                    <div class="form-group">
+                        <label for="inputData">Input Column Data:</label>
+                        <textarea class="form-control" id="inputData" name="input_data" rows="10"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Convert</button>
+                </form>
+                <h2 class="mt-4">Semicolon-Separated List:</h2>
+                <div class="alert alert-info" role="alert">
+                    {{ last_conversions[0] if last_conversions else "No conversions yet." }}
+                </div>
+                <h2 class="mt-4">Last 5 Conversions:</h2>
+                <ul class="list-group">
+                    {% for conversion in last_conversions %}
+                        <li class="list-group-item">{{ conversion }}</li>
+                    {% endfor %}
+                </ul>
+            </div>
+            <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+            <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+        </body>
+        </html>
+    ''', last_conversions=load_last_conversions())
 
-# Create and place the input text field
-text_input_label = tk.Label(root, text="Input Column Data:")
-text_input_label.pack()
-text_input = tk.Text(root, height=10, width=50)
-text_input.pack()
-
-# Create and place the convert button
-convert_button = tk.Button(root, text="Convert", command=on_convert_button_click)
-convert_button.pack()
-
-# Create and place the output text field
-text_output_label = tk.Label(root, text="Semicolon-Separated List:")
-text_output_label.pack()
-text_output = tk.Text(root, height=10, width=50)
-text_output.pack()
-
-# Create and place the last 5 conversions display
-last_conversions_label = tk.Label(root, text="Last 5 Conversions:")
-last_conversions_label.pack()
-last_conversions_display = tk.Text(root, height=10, width=50)
-last_conversions_display.pack()
-
-# Load and display the last 5 conversions
-update_last_conversions_display()
-
-# Run the Tkinter event loop
-root.mainloop()
+if __name__ == '__main__':
+    app.run(debug=True)

@@ -1,16 +1,13 @@
 from flask import Flask, request, render_template_string, redirect, url_for
 import shelve
+import os
 
 app = Flask(__name__)
 
 def convert_column_to_semicolon_list(data):
-    # Split the input data by new lines and strip any leading/trailing whitespace
     data = data.strip().split('\n')
     data = [item.strip() for item in data]
-
-    # Convert the list to a semicolon-separated string
     semicolon_separated_list = ";".join(data)
-
     return semicolon_separated_list
 
 def save_conversion(conversion):
@@ -18,9 +15,9 @@ def save_conversion(conversion):
         if 'conversions' not in db:
             db['conversions'] = []
         conversions = db['conversions']
-        conversions.insert(0, conversion)  # Insert the new conversion at the beginning
+        conversions.insert(0, conversion)
         if len(conversions) > 5:
-            conversions = conversions[:5]  # Keep only the last 5 conversions
+            conversions = conversions[:5]
         db['conversions'] = conversions
 
 def load_last_conversions():
@@ -74,4 +71,5 @@ def index():
     ''', last_conversions=load_last_conversions())
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)

@@ -1,2 +1,2 @@
-Flask
-shelve
+Flask==2.0.1
+shelve==0.1
